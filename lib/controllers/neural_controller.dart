@@ -8,9 +8,10 @@ import '../services/esp_service.dart';
 class NeuralController extends ChangeNotifier {
   final EspService _service;
 
-  List<double> points = [];
+  final ValueNotifier<List<double>> pointsNotifier = ValueNotifier<List<double>>([]);
+  final ValueNotifier<double> graphMaxNotifier = ValueNotifier<double>(250.0);
+  
   double threshold = 100.0;
-  double _graphMax = 250.0; // The adaptive vertical limit
   String activeMode = "relay";
   bool isConnected = false;
   double userThreshold = 100.0; // Store user's threshold for non-SOS modes
@@ -23,22 +24,29 @@ class NeuralController extends ChangeNotifier {
       "https://your-backend-url.com/send-sms"; // Replace with your actual backend URL
 
   NeuralController(this._service) {
+    _service.connectionStateStream.listen((state) {
+      isConnected = state;
+      notifyListeners();
+    });
+
     _service.signalStream.listen((value) {
-      isConnected = true;
-      points.add(value);
-      if (points.length > 150) points.removeAt(0);
+      final currentList = List<double>.from(pointsNotifier.value);
+      currentList.add(value);
+      if (currentList.length > 150) currentList.removeAt(0);
+      pointsNotifier.value = currentList;
 
       // --- ADAPTIVE AUTO THRESHOLD ADJUST ---
       // Find the highest peak in the current buffer
       double highestInView =
-          points.isNotEmpty ? points.reduce((a, b) => a > b ? a : b) : 100.0;
+          currentList.isNotEmpty ? currentList.reduce((a, b) => a > b ? a : b) : 100.0;
 
       // Target max is either the signal peak or the threshold line + 20% margin
       double targetMax =
           (highestInView > threshold ? highestInView : threshold) * 1.2;
 
-      // Smoothly interpolate _graphMax to prevent jittery scaling
-      _graphMax = (_graphMax * 0.9) + (targetMax * 0.1);
+      // Smoothly interpolate graphMaxNotifier.value to prevent jittery scaling
+      double gMax = (graphMaxNotifier.value * 0.9) + (targetMax * 0.1);
+      graphMaxNotifier.value = gMax < 100 ? 100 : gMax;
 
       // Spike detection for SOS mode
       if (activeMode == "sos" && value > userThreshold) {
@@ -48,15 +56,9 @@ class NeuralController extends ChangeNotifier {
           lastTriggerMs = now;
         }
       }
-
-      notifyListeners();
-    }, onError: (_) {
-      isConnected = false;
-      notifyListeners();
-    });
+      // Note: No notifyListeners() here to keep graph optimization at 60fps
+    }, onError: (_) {});
   }
-
-  double get graphMax => _graphMax < 100 ? 100 : _graphMax;
 
   void setThreshold(double val) {
     threshold = val;
@@ -65,7 +67,7 @@ class NeuralController extends ChangeNotifier {
     // Only update the ESP threshold when not in SOS mode.
     if (activeMode != "sos") {
       _espThreshold = val;
-      _service.sendCommand("/setTh?v=${_espThreshold.toInt()}");
+      _service.sendCommand("T:${_espThreshold.toInt()}");
     }
 
     notifyListeners();
@@ -80,11 +82,10 @@ class NeuralController extends ChangeNotifier {
       sendSOS(); // Send initial SOS
     } else {
       _espThreshold = userThreshold;
-      _service.sendCommand("/setTarget?t=$mode");
     }
 
     // Update ESP threshold based on mode.
-    _service.sendCommand("/setTh?v=${_espThreshold.toInt()}");
+    _service.sendCommand("T:${_espThreshold.toInt()}");
     notifyListeners();
   }
 
@@ -92,7 +93,7 @@ class NeuralController extends ChangeNotifier {
     if (activeMode == "sos") {
       sendSOS();
     } else {
-      _service.sendCommand("/manual");
+      _service.sendCommand("M");
     }
   }
 

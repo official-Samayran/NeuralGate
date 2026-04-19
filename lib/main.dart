@@ -7,7 +7,7 @@ import 'widgets/neural_graph.dart';
 void main() {
   runApp(
     ChangeNotifierProvider(
-      create: (_) => NeuralController(EspService(host: "192.168.4.1")),
+      create: (_) => NeuralController(EspService()),
       child: const NeuralGateApp(),
     ),
   );
@@ -47,14 +47,36 @@ class HomeScreen extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Text("NEURALGATE",
-                    style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 4,
-                        color: Colors.white)),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Column(
+                  children: [
+                    const Text("NEURALGATE",
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 4,
+                            color: Colors.white)),
+                    const SizedBox(height: 5),
+                    Consumer<NeuralController>(
+                      builder: (context, ctrl, _) => Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(ctrl.isConnected ? Icons.bluetooth_connected : Icons.bluetooth_searching, 
+                            size: 14, 
+                            color: ctrl.isConnected ? Colors.greenAccent : Colors.white54),
+                          const SizedBox(width: 5),
+                          Text(ctrl.isConnected ? "Bluetooth Connected" : "Disconnected",
+                              style: TextStyle(
+                                fontSize: 12, 
+                                color: ctrl.isConnected ? Colors.greenAccent : Colors.white54,
+                                fontWeight: FontWeight.bold
+                              )),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               // GRAPH CARD
@@ -66,13 +88,16 @@ class HomeScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.black,
                     borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                   ),
                   child: Consumer<NeuralController>(
-                    builder: (context, ctrl, _) => NeuralGraph(
-                      points: ctrl.points,
-                      threshold: ctrl.threshold,
-                      graphMax: ctrl.graphMax,
+                    builder: (context, ctrl, _) => AnimatedBuilder(
+                      animation: Listenable.merge([ctrl.pointsNotifier, ctrl.graphMaxNotifier]),
+                      builder: (context, _) => NeuralGraph(
+                        points: ctrl.pointsNotifier.value,
+                        threshold: ctrl.threshold,
+                        graphMax: ctrl.graphMaxNotifier.value,
+                      ),
                     ),
                   ),
                 ),
@@ -89,7 +114,7 @@ class HomeScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: const Color(0xFF121214),
                     borderRadius: BorderRadius.circular(32),
-                    border: Border.all(color: Colors.white.withOpacity(0.05)),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
                   ),
                   child: const SingleChildScrollView(child: ControlLayout()),
                 ),
@@ -167,7 +192,7 @@ class ControlLayout extends StatelessWidget {
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             elevation: 10,
-            shadowColor: const Color(0xFF007AFF).withOpacity(0.4),
+            shadowColor: const Color(0xFF007AFF).withValues(alpha: 0.4),
           ),
           child: const Text("MANUAL TRIGGER",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),

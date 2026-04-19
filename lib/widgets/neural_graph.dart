@@ -42,7 +42,7 @@ class _GraphPainter extends CustomPainter {
     }
 
     // 1. Draw Background Grid (Subtle)
-    final gridPaint = Paint()..color = Colors.white.withOpacity(0.05)..strokeWidth = 0.5;
+    final gridPaint = Paint()..color = Colors.white.withValues(alpha: 0.05)..strokeWidth = 0.5;
     for (int i = 1; i < 5; i++) {
       double y = size.height * (i / 5);
       canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
@@ -50,7 +50,7 @@ class _GraphPainter extends CustomPainter {
 
     // 2. Draw Threshold Line
     final tPaint = Paint()
-      ..color = Colors.redAccent.withOpacity(0.4)
+      ..color = Colors.redAccent.withValues(alpha: 0.4)
       ..strokeWidth = 1.5;
     double ty = getY(threshold);
     
@@ -73,7 +73,7 @@ class _GraphPainter extends CustomPainter {
 
     // Glowing Neon Effect
     final glowPaint = Paint()
-      ..color = const Color(0xFF007AFF).withOpacity(0.3)
+      ..color = const Color(0xFF007AFF).withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 8
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
