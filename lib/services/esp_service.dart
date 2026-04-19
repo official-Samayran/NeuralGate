@@ -36,8 +36,9 @@ class EspService {
     
     FlutterBluePlus.scanResults.listen((results) {
       for (ScanResult r in results) {
+        print("Found: ${r.device.platformName} | ID: ${r.device.remoteId}");
         // Checking both platformName and advName for compatibility
-        if (r.device.platformName == 'NeuralGate_Pro_BLE' || r.device.advName == 'NeuralGate_Pro_BLE') {
+        if (r.device.platformName == 'HELIX' || r.device.advName == 'HELIX') {
           FlutterBluePlus.stopScan();
           _connectToDevice(r.device);
           break;
@@ -60,9 +61,9 @@ class EspService {
 
     try {
       await device.connect(autoConnect: false);
-      
-      // Request MTU increase for smooth data
+      await Future.delayed(const Duration(milliseconds: 500)); 
       await device.requestMtu(512);
+      await device.discoverServices();
 
       // Discover services
       List<BluetoothService> services = await device.discoverServices();
